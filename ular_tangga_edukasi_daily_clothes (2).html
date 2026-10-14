@@ -1,0 +1,1764 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ular Tangga Edukasi: Ekosistem IPAS Kelas 3 SD</title>
+    <meta name="description" content="Game Ular Tangga edukasi interaktif 10x10 berbasis Canvas untuk belajar materi Ekosistem IPAS Kelas 3 SD, dilengkapi mode duel 1vs1, kuis tantangan tangga & ular, audio narasi, dan modul ringkasan materi." />
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Plus Jakarta Sans', 'system-ui', 'sans-serif'],
+              display: ['Outfit', 'Plus Jakarta Sans', 'sans-serif'],
+            },
+            animation: {
+              'fade-in': 'fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+              'bounce-subtle': 'bounceSubtle 1.5s infinite',
+            },
+            keyframes: {
+              fadeIn: {
+                '0%': { opacity: '0', transform: 'scale(0.97)' },
+                '100%': { opacity: '1', transform: 'scale(1)' },
+              },
+              bounceSubtle: {
+                '0%, 100%': { transform: 'translateY(-3%)' },
+                '50%': { transform: 'translateY(0)' },
+              }
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- React, ReactDOM, Babel, and Canvas Confetti CDNs -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  </head>
+  <body class="bg-amber-50/50 text-slate-900 antialiased selection:bg-amber-200 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+      // Sound Manager using Web Audio API
+      class SoundManager {
+        constructor() {
+          this.ctx = null;
+          this.isMuted = false;
+        }
+
+        initContext() {
+          if (!this.ctx && typeof window !== 'undefined') {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+            }
+          }
+          if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+          }
+        }
+
+        setMuted(muted) {
+          this.isMuted = muted;
+        }
+
+        getMuted() {
+          return this.isMuted;
+        }
+
+        toggleMute() {
+          this.isMuted = !this.isMuted;
+          return this.isMuted;
+        }
+
+        playDiceRoll() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          for (let i = 0; i < 6; i++) {
+            const time = now + i * 0.06;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(260 + Math.random() * 220, time);
+            gain.gain.setValueAtTime(0.12, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.04);
+          }
+        }
+
+        playStep() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(440, now);
+          osc.frequency.exponentialRampToValueAtTime(660, now + 0.08);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.09);
+        }
+
+        playCorrect() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const time = now + idx * 0.09;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(0.2, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.25);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.25);
+          });
+        }
+
+        playWrong() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.linearRampToValueAtTime(140, now + 0.28);
+          gain.gain.setValueAtTime(0.15, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.3);
+        }
+
+        playLadderClimb() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const notes = [392, 493.88, 587.33, 783.99, 987.77];
+          notes.forEach((freq, idx) => {
+            const time = now + idx * 0.1;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, time);
+            gain.gain.setValueAtTime(0.18, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + 0.3);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(time);
+            osc.stop(time + 0.3);
+          });
+        }
+
+        playSnakeSlide() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(600, now);
+          osc.frequency.exponentialRampToValueAtTime(160, now + 0.45);
+          gain.gain.setValueAtTime(0.14, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(now);
+          osc.stop(now + 0.5);
+        }
+
+        playVictory() {
+          if (this.isMuted) return;
+          this.initContext();
+          if (!this.ctx) return;
+          const now = this.ctx.currentTime;
+          const melody = [
+            { freq: 523.25, dur: 0.15 },
+            { freq: 523.25, dur: 0.15 },
+            { freq: 523.25, dur: 0.15 },
+            { freq: 659.25, dur: 0.45 },
+            { freq: 587.33, dur: 0.2 },
+            { freq: 659.25, dur: 0.2 },
+            { freq: 783.99, dur: 0.6 },
+          ];
+          let t = now;
+          melody.forEach((note) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(note.freq, t);
+            gain.gain.setValueAtTime(0.25, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + note.dur);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + note.dur);
+            t += note.dur * 0.9;
+          });
+        }
+      }
+
+      const soundManager = new SoundManager();
+
+      function speakText(text, rate = 0.9) {
+        if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new SpeechSynthesisUtterance(text);
+          utterance.lang = 'id-ID';
+          utterance.rate = rate;
+          utterance.pitch = 1.0;
+          const voices = window.speechSynthesis.getVoices();
+          const idVoice = voices.find(v => v.lang.startsWith('id') || v.lang.includes('ID'));
+          if (idVoice) {
+            utterance.voice = idVoice;
+          }
+          window.speechSynthesis.speak(utterance);
+        } catch (err) {
+          console.warn('Speech synthesis error:', err);
+        }
+      }
+
+      const EKOSISTEM_VOCABULARY = [
+        { id: 'biotik', english: 'Komponen Biotik', indonesian: 'Makhluk Hidup', category: 'Komponen', emoji: '🌱', phonetic: 'Bio = Hidup', exampleEn: 'Tumbuhan, hewan, dan manusia.', exampleId: 'Komponen biotik adalah semua makhluk hidup dalam lingkungan.' },
+        { id: 'abiotik', english: 'Komponen Abiotik', indonesian: 'Benda Tak Hidup', category: 'Komponen', emoji: '💧', phonetic: 'A = Tidak, Bio = Hidup', exampleEn: 'Air, tanah, udara, dan sinar matahari.', exampleId: 'Komponen abiotik membantu makhluk hidup untuk bertahan hidup.' },
+        { id: 'produsen', english: 'Produsen', indonesian: 'Pembuat Makanan', category: 'Rantai Makanan', emoji: '🌾', phonetic: 'Produsen = Penghasil', exampleEn: 'Tumbuhan hijau memproduksi makanan sendiri.', exampleId: 'Tumbuhan menggunakan sinar matahari untuk fotosintesis.' },
+        { id: 'herbivora', english: 'Herbivora (Konsumen I)', indonesian: 'Pemakan Tumbuhan', category: 'Hewan', emoji: '🐇', phonetic: 'Herba = Tumbuhan', exampleEn: 'Kelinci, sapi, dan kambing.', exampleId: 'Hewan pemakan tumbuhan yang memakan rumput atau daun.' },
+        { id: 'karnivora', english: 'Karnivora (Konsumen II/III)', indonesian: 'Pemakan Daging', category: 'Hewan', emoji: '🦅', phonetic: 'Karnis = Daging', exampleEn: 'Singa, elang, dan harimau.', exampleId: 'Hewan yang memangsa hewan lain untuk mendapatkan energi.' },
+        { id: 'omnivora', english: 'Omnivora', indonesian: 'Pemakan Segala', category: 'Hewan', emoji: '🐻', phonetic: 'Omni = Semua', exampleEn: 'Ayam, bebek, dan beruang.', exampleId: 'Hewan yang memakan tumbuhan dan juga daging.' },
+        { id: 'pengurai', english: 'Pengurai / Dekomposer', indonesian: 'Pelebur Sisa Organik', category: 'Rantai Makanan', emoji: '🍄', phonetic: 'Dekomposer', exampleEn: 'Jamur, cacing, dan bakteri.', exampleId: 'Pengurai menghancurkan makhluk hidup yang mati menjadi hara.' },
+        { id: 'ekosistem-sawah', english: 'Ekosistem Sawah', indonesian: 'Ekosistem Buatan', category: 'Jenis Ekosistem', emoji: '🌾', phonetic: 'Sawah', exampleEn: 'Padi, belalang, katak, dan ular.', exampleId: 'Ekosistem buatan manusia untuk bercocok tanam padi.' },
+        { id: 'ekosistem-hutan', english: 'Ekosistem Hutan', indonesian: 'Ekosistem Alami', category: 'Jenis Ekosistem', emoji: '🌲', phonetic: 'Hutan Alami', exampleEn: 'Pohon besar, harimau, gajah, dan burung.', exampleId: 'Ekosistem alami yang kaya akan keanekaragaman hayati.' },
+        { id: 'ekosistem-laut', english: 'Ekosistem Laut', indonesian: 'Ekosistem Air Asin', category: 'Jenis Ekosistem', emoji: '🌊', phonetic: 'Laut & Terumbu Karang', exampleEn: 'Ikan, terumbu karang, dan rumput laut.', exampleId: 'Ekosistem terbesar di bumi yang berisi air asin.' },
+        { id: 'habitat', english: 'Habitat', indonesian: 'Tempat Tinggal', category: 'Istilah', emoji: '🏡', phonetic: 'Habitat', exampleEn: 'Sarang burung di atas pohon.', exampleId: 'Tempat hidup alami bagi suatu makhluk hidup.' },
+        { id: 'rantai-makanan', english: 'Rantai Makanan', indonesian: 'Jalur Makan-Dimakan', category: 'Rantai Makanan', emoji: '⛓️', phonetic: 'Food Chain', exampleEn: 'Padi ➔ Belalang ➔ Katak ➔ Ular ➔ Elang.', exampleId: 'Peristiwa makan dan dimakan antar makhluk hidup secara berurutan.' }
+      ];
+
+      const QUIZ_QUESTIONS = [
+        { id: 'q1', type: 'multiple_choice', promptId: 'Manakah yang termasuk komponen BIOTIK (makhluk hidup) di ekosistem sekolah?', promptEn: 'Komponen Biotik = Makhluk Hidup', options: ['Bunga mawar dan rumput', 'Batu dan tanah', 'Air keran dan bangku', 'Cahaya matahari'], correctIndex: 0, explanation: 'Biotik artinya makhluk hidup. Tumbuhan bunga mawar dan rumput adalah contoh komponen biotik.', hint: 'Cari benda yang tumbuh dan hidup!' },
+        { id: 'q2', type: 'multiple_choice', promptId: 'Manakah yang merupakan contoh komponen ABIOTIK (benda tak hidup)?', promptEn: 'Komponen Abiotik = Benda Mati', options: ['Kelinci dan kambing', 'Cahaya matahari, air, dan tanah', 'Pohon mangga dan cacing', 'Bakteri dan jamur'], correctIndex: 1, explanation: 'Abiotik adalah komponen tak hidup seperti air, tanah, udara, batu, dan sinar matahari.', hint: 'Pilih elemen alam yang tidak bernapas.' },
+        { id: 'q3', type: 'multiple_choice', promptId: 'Mengapa tumbuhan hijau disebut sebagai PRODUSEN dalam rantai makanan?', promptEn: 'Peran Tumbuhan', options: ['Karena bisa membuat makanan sendiri', 'Karena memangsa hewan lain', 'Karena memakan bangkai', 'Karena hidup di dalam tanah'], correctIndex: 0, explanation: 'Tumbuhan hijau adalah produsen karena mampu memasak/membuat makanan sendiri lewat fotosintesis dengan bantuan sinar matahari.', hint: 'Berasal dari kata "produksi" atau menghasilkan.' },
+        { id: 'q4', type: 'multiple_choice', promptId: 'Sapi, kelinci, dan kambing memakan rumput/tumbuhan. Hewan pemakan tumbuhan disebut...', promptEn: 'Jenis Makanan Hewan', options: ['Karnivora', 'Herbivora', 'Omnivora', 'Pengurai'], correctIndex: 1, explanation: 'Herbivora adalah hewan yang sumber makanan utamanya adalah tumbuhan.', hint: 'Herba artinya tumbuh-tumbuhan.' },
+        { id: 'q5', type: 'multiple_choice', promptId: 'Harimau, elang, dan serigala memangsa daging hewan lain. Mereka tergolong hewan...', promptEn: 'Jenis Makanan Hewan', options: ['Herbivora', 'Karnivora', 'Omnivora', 'Produsen'], correctIndex: 1, explanation: 'Karnivora adalah hewan pemakan daging/pemangsa hewan lain.', hint: 'Karni artinya daging.' },
+        { id: 'q6', type: 'multiple_choice', promptId: 'Ayam memakan biji jagung (tumbuhan) dan juga cacing (daging). Ayam termasuk hewan...', promptEn: 'Pengelompokan Hewan', options: ['Herbivora', 'Karnivora', 'Omnivora', 'Abiotik'], correctIndex: 2, explanation: 'Omnivora adalah hewan pemakan segala (tumbuhan maupun daging).', hint: 'Omni artinya segala jenis makanan.' },
+        { id: 'q7', type: 'multiple_choice', promptId: 'Di dalam rantai makanan sawah: Padi ➔ Belalang ➔ Katak ➔ Ular. Siapakah yang bertindak sebagai KONSUMEN tingkat 1?', promptEn: 'Urutan Rantai Makanan', options: ['Padi', 'Belalang', 'Katak', 'Ular'], correctIndex: 1, explanation: 'Belalang memakan padi secara langsung, sehingga belalang berperan sebagai Konsumen I (Herbivora).', hint: 'Hewan pertama yang memakan produsen (tumbuhan).' },
+        { id: 'q8', type: 'multiple_choice', promptId: 'Di bawah ini yang termasuk contoh EKOSISTEM BUATAN (dibuat oleh manusia) adalah...', promptEn: 'Jenis-jenis Ekosistem', options: ['Hutan belantara', 'Laut lepas', 'Akuarium dan Kolam Ikan', 'Padang rumput alami'], correctIndex: 2, explanation: 'Akuarium, kolam ikan, dan sawah dibuat oleh manusia untuk kebutuhan tertentu.', hint: 'Tempat yang dirancang dan dibangun manusia.' },
+        { id: 'q9', type: 'multiple_choice', promptId: 'Makhluk hidup seperti Jamur dan Cacing Tanah berfungsi merombak sisa makhluk hidup yang telah mati menjadi hara tanah. Mereka disebut...', promptEn: 'Peran Dekomposer', options: ['Produsen', 'Pengurai (Dekomposer)', 'Konsumen Utama', 'Komponen Abiotik'], correctIndex: 1, explanation: 'Pengurai (Dekomposer) menguraikan bangkai makhluk hidup menjadi zat hara penyubur tanah.', hint: 'Tugasnya membusukkan dan menguraikan sisa pupuk alami.' },
+        { id: 'q10', type: 'multiple_choice', promptId: 'Tempat tinggal alami bagi suatu makhluk hidup untuk tumbuh dan berkembang biak disebut...', promptEn: 'Istilah Lingkungan', options: ['Habitat', 'Produsen', 'Konsumen', 'Fotosintesis'], correctIndex: 0, explanation: 'Habitat adalah lingkungan spesifik tempat tinggal suatu organisme.', hint: 'Rumah alami hewan/tumbuhan.' },
+        { id: 'q11', type: 'fill_in', promptId: 'Lengkapi rantai makanan di kebun: Rumput ➔ Ulat ➔ Burung Pemakan Ulat ➔ _____.', promptEn: 'Predator Puncak Kebun', options: ['Kucing / Elang', 'Padi', 'Cahaya Matahari', 'Air'], correctIndex: 0, explanation: 'Burung pemakan ulat dapat dimangsa oleh pemangsa yang lebih besar seperti Kucing atau Burung Elang.', hint: 'Pemangsa burung kecil di kebun.' },
+        { id: 'q12', type: 'fill_in', promptId: 'Tanpa adanya sinar MATAHARI, tumbuhan hijau tidak bisa melakukan proses pembuatan makanan yang disebut...', promptEn: 'Proses Tumbuhan Hijau', options: ['Fotosintesis', 'Pernapasan', 'Penguraian', 'Perkembangbiakan'], correctIndex: 0, explanation: 'Fotosintesis adalah proses tumbuhan hijau memasak makanan sendiri dengan air, CO2, dan cahaya matahari.', hint: 'Membutuhkan cahaya (foto).' },
+        { id: 'q13', type: 'picture', promptId: 'Komponen ekosistem apakah gambar ini? ☀️💧🌱', promptEn: 'Interaksi Ekosistem', options: ['Komponen Biotik dan Abiotik yang saling berinteraksi', 'Hanya Komponen Abiotik saja', 'Hanya Hewan Karnivora', 'Kumpulan Pengurai'], correctIndex: 0, explanation: 'Matahari & Air (Abiotik) memberikan nutrisi agar Tumbuhan (Biotik) dapat tumbuh segar.', hint: 'Gabungan antara benda hidup dan benda mati.' },
+        { id: 'q14', type: 'multiple_choice', promptId: 'Apa yang terjadi jika populasi katak di sawah punah karena diburu berlebihan?', promptEn: 'Keseimbangan Ekosistem', options: ['Jumlah belalang akan melonjak sangat banyak', 'Padi akan tumbuh semakin subur', 'Ular sawah makin bertambah banyak', 'Sawah menjadi laut'], correctIndex: 0, explanation: 'Katak adalah pemakan belalang. Jika katak habis, tidak ada yang memangsa belalang sehingga jumlah belalang melonjak.', hint: 'Pikirkan hewan yang dimakan oleh katak.' },
+        { id: 'q15', type: 'multiple_choice', promptId: 'Contoh ekosistem ALAMI yang terbentuk tanpa campur tangan manusia adalah...', promptEn: 'Ekosistem Alami', options: ['Sawah padi', 'Hutan dan Sungai', 'Waduk buatan', 'Taman kota'], correctIndex: 1, explanation: 'Hutan, laut, dan sungai terbentuk secara alami oleh alam.', hint: 'Diciptakan alami oleh alam semesta.' }
+      ];
+
+      function getRandomQuizQuestion(usedIds = new Set()) {
+        const available = QUIZ_QUESTIONS.filter(q => !usedIds.has(q.id));
+        const pool = available.length > 0 ? available : QUIZ_QUESTIONS;
+        const index = Math.floor(Math.random() * pool.length);
+        return pool[index];
+      }
+
+      const LADDERS = [
+        { from: 4, to: 14, color: '#F59E0B' },
+        { from: 9, to: 31, color: '#10B981' },
+        { from: 20, to: 38, color: '#3B82F6' },
+        { from: 28, to: 84, color: '#8B5CF6' },
+        { from: 40, to: 59, color: '#EC4899' },
+        { from: 51, to: 67, color: '#06B6D4' },
+        { from: 63, to: 81, color: '#F97316' },
+        { from: 71, to: 91, color: '#14B8A6' },
+      ];
+
+      const SNAKES = [
+        { from: 17, to: 7, color: '#EF4444' },
+        { from: 54, to: 34, color: '#DC2626' },
+        { from: 62, to: 19, color: '#B91C1C' },
+        { from: 64, to: 60, color: '#E11D48' },
+        { from: 87, to: 24, color: '#BE123C' },
+        { from: 93, to: 73, color: '#991B1B' },
+        { from: 95, to: 75, color: '#DC2626' },
+        { from: 99, to: 78, color: '#7F1D1D' },
+      ];
+
+      const BONUS_TILES_MAP = {
+        12: 'produsen',
+        25: 'herbivora',
+        36: 'karnivora',
+        45: 'omnivora',
+        57: 'pengurai',
+        69: 'biotik',
+        85: 'ekosistem-sawah',
+      };
+
+      function getTileCoordinates(tileNumber) {
+        const clamped = Math.max(1, Math.min(100, tileNumber));
+        const zeroIndexed = clamped - 1;
+        const row = Math.floor(zeroIndexed / 10);
+        const remainder = zeroIndexed % 10;
+        const col = row % 2 === 0 ? remainder : 9 - remainder;
+        return { row, col };
+      }
+
+      function generateBoardTiles() {
+        const tiles = [];
+        for (let n = 1; n <= 100; n++) {
+          const { row, col } = getTileCoordinates(n);
+          let type = 'normal';
+          let ladderTo, snakeTo;
+          const ladderBottom = LADDERS.find(l => l.from === n);
+          const ladderTop = LADDERS.find(l => l.to === n);
+          const snakeHead = SNAKES.find(s => s.from === n);
+          const snakeTail = SNAKES.find(s => s.to === n);
+
+          if (ladderBottom) {
+            type = 'ladder_bottom';
+            ladderTo = ladderBottom.to;
+          } else if (ladderTop) {
+            type = 'ladder_top';
+          } else if (snakeHead) {
+            type = 'snake_head';
+            snakeTo = snakeHead.to;
+          } else if (snakeTail) {
+            type = 'snake_tail';
+          } else if (BONUS_TILES_MAP[n]) {
+            type = 'quiz_bonus';
+          }
+
+          const ekosistemId = BONUS_TILES_MAP[n];
+          const ekosistemBonus = ekosistemId ? EKOSISTEM_VOCABULARY.find(c => c.id === ekosistemId) : undefined;
+
+          tiles.push({
+            number: n,
+            row,
+            col,
+            type,
+            ladderTo,
+            snakeTo,
+            ekosistemBonus,
+          });
+        }
+        return tiles;
+      }
+
+      const BOARD_TILES = generateBoardTiles();
+
+      const GameBoardCanvas = ({ players, activePlayerIndex, highlightTile, onTileClick }) => {
+        const canvasRef = React.useRef(null);
+        const containerRef = React.useRef(null);
+        const [boardSize, setBoardSize] = React.useState(600);
+        const [hoveredTile, setHoveredTile] = React.useState(null);
+
+        const animatedPositionsRef = React.useRef([
+          { x: 0, y: 0, targetX: 0, targetY: 0, hop: 0 },
+          { x: 0, y: 0, targetX: 0, targetY: 0, hop: 0 },
+        ]);
+
+        React.useEffect(() => {
+          const updateSize = () => {
+            if (containerRef.current) {
+              const width = containerRef.current.clientWidth;
+              const size = Math.min(Math.max(width, 320), 680);
+              setBoardSize(size);
+            }
+          };
+          updateSize();
+          window.addEventListener('resize', updateSize);
+          return () => window.removeEventListener('resize', updateSize);
+        }, []);
+
+        const getCellPixelCenter = React.useCallback((tileNumber, size) => {
+          const { row, col } = getTileCoordinates(tileNumber);
+          const cellSize = size / 10;
+          const x = col * cellSize + cellSize / 2;
+          const y = (9 - row) * cellSize + cellSize / 2;
+          return { x, y, cellSize };
+        }, []);
+
+        React.useEffect(() => {
+          players.forEach((player, idx) => {
+            const { x, y } = getCellPixelCenter(player.position, boardSize);
+            if (!animatedPositionsRef.current[idx]) {
+              animatedPositionsRef.current[idx] = { x, y, targetX: x, targetY: y, hop: 0 };
+            } else {
+              animatedPositionsRef.current[idx].targetX = x;
+              animatedPositionsRef.current[idx].targetY = y;
+            }
+          });
+        }, [players, boardSize, getCellPixelCenter]);
+
+        React.useEffect(() => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) return;
+          let animationFrameId;
+
+          const dpr = window.devicePixelRatio || 1;
+          canvas.width = boardSize * dpr;
+          canvas.height = boardSize * dpr;
+          canvas.style.width = `${boardSize}px`;
+          canvas.style.height = `${boardSize}px`;
+
+          const render = () => {
+            ctx.save();
+            ctx.scale(dpr, dpr);
+            ctx.clearRect(0, 0, boardSize, boardSize);
+            const cellSize = boardSize / 10;
+
+            // 1. Draw Tiles
+            BOARD_TILES.forEach((tile) => {
+              const x = tile.col * cellSize;
+              const y = (9 - tile.row) * cellSize;
+              const isEven = (tile.row + tile.col) % 2 === 0;
+
+              let bgColor = isEven ? '#F0FDF4' : '#DCFCE7';
+              let borderColor = '#86EFAC';
+
+              if (tile.number === 1) {
+                bgColor = '#BBF7D0';
+                borderColor = '#4ADE80';
+              } else if (tile.number === 100) {
+                bgColor = '#FEF08A';
+                borderColor = '#FACC15';
+              } else if (tile.type === 'ladder_bottom') {
+                bgColor = '#E0F2FE';
+                borderColor = '#7DD3FC';
+              } else if (tile.type === 'snake_head') {
+                bgColor = '#FFE4E6';
+                borderColor = '#FDA4AF';
+              } else if (tile.type === 'quiz_bonus') {
+                bgColor = '#F3E8FF';
+                borderColor = '#D8B4FE';
+              }
+
+              if (hoveredTile === tile.number || highlightTile === tile.number) {
+                bgColor = '#FEF9C3';
+              }
+
+              ctx.fillStyle = bgColor;
+              ctx.fillRect(x, y, cellSize, cellSize);
+              ctx.strokeStyle = borderColor;
+              ctx.lineWidth = 1;
+              ctx.strokeRect(x, y, cellSize, cellSize);
+
+              ctx.fillStyle = '#334155';
+              ctx.font = `bold ${Math.max(10, Math.floor(cellSize * 0.22))}px 'Plus Jakarta Sans', sans-serif`;
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'top';
+              ctx.fillText(String(tile.number), x + 4, y + 4);
+
+              if (tile.number === 1) {
+                ctx.fillStyle = '#15803D';
+                ctx.font = `bold ${Math.floor(cellSize * 0.18)}px 'Plus Jakarta Sans', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('START', x + cellSize / 2, y + cellSize * 0.72);
+              } else if (tile.number === 100) {
+                ctx.fillStyle = '#B45309';
+                ctx.font = `bold ${Math.floor(cellSize * 0.18)}px 'Plus Jakarta Sans', sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.fillText('🏆 FINISH', x + cellSize / 2, y + cellSize * 0.72);
+              }
+
+              if (tile.ekosistemBonus) {
+                ctx.font = `${Math.floor(cellSize * 0.38)}px sans-serif`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(tile.ekosistemBonus.emoji, x + cellSize / 2, y + cellSize * 0.52);
+              }
+            });
+
+            // 2. Draw Ladders
+            LADDERS.forEach((ladder) => {
+              const start = getCellPixelCenter(ladder.from, boardSize);
+              const end = getCellPixelCenter(ladder.to, boardSize);
+              const dx = end.x - start.x;
+              const dy = end.y - start.y;
+              const angle = Math.atan2(dy, dx);
+              const dist = Math.hypot(dx, dy);
+
+              const railOffset = cellSize * 0.18;
+              const perpX = Math.cos(angle + Math.PI / 2) * railOffset;
+              const perpY = Math.sin(angle + Math.PI / 2) * railOffset;
+
+              ctx.save();
+              ctx.strokeStyle = ladder.color || '#D97706';
+              ctx.lineWidth = 4;
+              ctx.beginPath();
+              ctx.moveTo(start.x - perpX, start.y - perpY);
+              ctx.lineTo(end.x - perpX, end.y - perpY);
+              ctx.stroke();
+
+              ctx.beginPath();
+              ctx.moveTo(start.x + perpX, start.y + perpY);
+              ctx.lineTo(end.x + perpX, end.y + perpY);
+              ctx.stroke();
+              ctx.restore();
+
+              const rungCount = Math.max(3, Math.floor(dist / (cellSize * 0.35)));
+              ctx.strokeStyle = ladder.color || '#D97706';
+              ctx.lineWidth = 3;
+              for (let r = 1; r < rungCount; r++) {
+                const t = r / rungCount;
+                const rx = start.x + dx * t;
+                const ry = start.y + dy * t;
+                ctx.beginPath();
+                ctx.moveTo(rx - perpX, ry - perpY);
+                ctx.lineTo(rx + perpX, ry + perpY);
+                ctx.stroke();
+              }
+            });
+
+            // 3. Draw Snakes
+            SNAKES.forEach((snake) => {
+              const head = getCellPixelCenter(snake.from, boardSize);
+              const tail = getCellPixelCenter(snake.to, boardSize);
+              const dx = tail.x - head.x;
+              const dy = tail.y - head.y;
+              const dist = Math.hypot(dx, dy);
+
+              ctx.save();
+              ctx.beginPath();
+              ctx.moveTo(head.x, head.y);
+              const segments = 4;
+              for (let i = 1; i <= segments; i++) {
+                const t = i / segments;
+                const px = head.x + dx * t;
+                const py = head.y + dy * t;
+                const sway = Math.sin((i * Math.PI) / 2) * (cellSize * 0.32);
+                const nx = -dy / dist;
+                const ny = dx / dist;
+                if (i % 2 === 1) {
+                  ctx.quadraticCurveTo(px + nx * sway, py + ny * sway, px, py);
+                } else {
+                  ctx.quadraticCurveTo(px - nx * sway, py - ny * sway, px, py);
+                }
+              }
+              ctx.strokeStyle = snake.color || '#DC2626';
+              ctx.lineWidth = cellSize * 0.16;
+              ctx.lineCap = 'round';
+              ctx.stroke();
+
+              ctx.strokeStyle = '#FECDD3';
+              ctx.lineWidth = cellSize * 0.07;
+              ctx.stroke();
+              ctx.restore();
+
+              // Snake Head
+              ctx.save();
+              ctx.fillStyle = snake.color || '#DC2626';
+              ctx.beginPath();
+              ctx.arc(head.x, head.y, cellSize * 0.2, 0, Math.PI * 2);
+              ctx.fill();
+
+              const eyeOffset = cellSize * 0.08;
+              ctx.fillStyle = '#FFFFFF';
+              ctx.beginPath();
+              ctx.arc(head.x - eyeOffset, head.y - 3, cellSize * 0.07, 0, Math.PI * 2);
+              ctx.arc(head.x + eyeOffset, head.y - 3, cellSize * 0.07, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.fillStyle = '#111827';
+              ctx.beginPath();
+              ctx.arc(head.x - eyeOffset, head.y - 3, cellSize * 0.035, 0, Math.PI * 2);
+              ctx.arc(head.x + eyeOffset, head.y - 3, cellSize * 0.035, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            });
+
+            // 4. Update & Draw Players
+            players.forEach((player, idx) => {
+              const anim = animatedPositionsRef.current[idx];
+              if (!anim) return;
+
+              const speed = 0.25;
+              const dx = anim.targetX - anim.x;
+              const dy = anim.targetY - anim.y;
+              const dist = Math.hypot(dx, dy);
+
+              if (dist > 1) {
+                anim.x += dx * speed;
+                anim.y += dy * speed;
+                anim.hop = Math.sin((Date.now() / 80) % Math.PI) * (cellSize * 0.2);
+              } else {
+                anim.x = anim.targetX;
+                anim.y = anim.targetY;
+                anim.hop = 0;
+              }
+
+              const bothOnSameTile = players.length > 1 && players[0].position === players[1].position && Math.hypot(anim.targetX - anim.x, anim.targetY - anim.y) < 2;
+              let renderX = anim.x;
+              let renderY = anim.y - anim.hop;
+              if (bothOnSameTile) {
+                renderX += idx === 0 ? -cellSize * 0.16 : cellSize * 0.16;
+              }
+
+              const isActive = idx === activePlayerIndex;
+              const radius = cellSize * 0.25;
+
+              ctx.save();
+              if (isActive) {
+                const pulse = Math.sin(Date.now() / 180) * 3;
+                ctx.strokeStyle = player.color;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(renderX, renderY, radius + 4 + pulse, 0, Math.PI * 2);
+                ctx.stroke();
+              }
+
+              ctx.fillStyle = player.color;
+              ctx.beginPath();
+              ctx.arc(renderX, renderY, radius, 0, Math.PI * 2);
+              ctx.fill();
+
+              ctx.strokeStyle = '#FFFFFF';
+              ctx.lineWidth = 2.5;
+              ctx.stroke();
+              ctx.restore();
+
+              ctx.font = `${Math.floor(radius * 1.1)}px sans-serif`;
+              ctx.textAlign = 'center';
+              ctx.textBaseline = 'middle';
+              ctx.fillText(player.avatar, renderX, renderY);
+            });
+
+            ctx.restore();
+            animationFrameId = requestAnimationFrame(render);
+          };
+
+          render();
+          return () => cancelAnimationFrame(animationFrameId);
+        }, [boardSize, players, activePlayerIndex, highlightTile, hoveredTile, getCellPixelCenter]);
+
+        const handleCanvasMouseMove = (e) => {
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const cellSize = boardSize / 10;
+          const col = Math.floor(x / cellSize);
+          const visualRow = Math.floor(y / cellSize);
+          const row = 9 - visualRow;
+          if (col >= 0 && col < 10 && row >= 0 && row < 10) {
+            const tileNumber = row % 2 === 0 ? row * 10 + col + 1 : row * 10 + (9 - col) + 1;
+            setHoveredTile(tileNumber);
+          } else {
+            setHoveredTile(null);
+          }
+        };
+
+        const handleCanvasClick = (e) => {
+          if (!onTileClick) return;
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const rect = canvas.getBoundingClientRect();
+          const x = e.clientX - rect.left;
+          const y = e.clientY - rect.top;
+          const cellSize = boardSize / 10;
+          const col = Math.floor(x / cellSize);
+          const visualRow = Math.floor(y / cellSize);
+          const row = 9 - visualRow;
+          if (col >= 0 && col < 10 && row >= 0 && row < 10) {
+            const tileNumber = row % 2 === 0 ? row * 10 + col + 1 : row * 10 + (9 - col) + 1;
+            onTileClick(tileNumber);
+          }
+        };
+
+        return (
+          <div ref={containerRef} className="relative flex flex-col items-center justify-center w-full max-w-[680px] mx-auto select-none">
+            <div className="relative rounded-2xl p-2 bg-gradient-to-b from-emerald-200/60 to-emerald-300/60 shadow-xl border border-emerald-300/80">
+              <canvas
+                ref={canvasRef}
+                onMouseMove={handleCanvasMouseMove}
+                onMouseLeave={() => setHoveredTile(null)}
+                onClick={handleCanvasClick}
+                className="rounded-xl cursor-pointer block touch-none"
+              />
+              {hoveredTile && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-3 py-1.5 bg-slate-900/90 text-white text-xs font-medium rounded-lg shadow-lg pointer-events-none whitespace-nowrap flex items-center gap-2 backdrop-blur-sm z-10">
+                  <span>Petak #{hoveredTile}</span>
+                  {LADDERS.find(l => l.from === hoveredTile) && (
+                    <span className="text-emerald-300">🪜 Tangga naik ke #{LADDERS.find(l => l.from === hoveredTile)?.to}</span>
+                  )}
+                  {SNAKES.find(s => s.from === hoveredTile) && (
+                    <span className="text-rose-300">🐍 Kepala Ular turun ke #{SNAKES.find(s => s.from === hoveredTile)?.to}</span>
+                  )}
+                  {BOARD_TILES.find(t => t.number === hoveredTile)?.ekosistemBonus && (
+                    <span className="text-emerald-300">🌱 Materi: {BOARD_TILES.find(t => t.number === hoveredTile)?.ekosistemBonus?.english}</span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const QuizModal = ({ quizEvent, playerName, playerAvatar, playerColor, onResolved }) => {
+        const { question, type, fromTile, targetTile } = quizEvent;
+        const [selectedIndex, setSelectedIndex] = React.useState(null);
+        const [isAnswered, setIsAnswered] = React.useState(false);
+        const [showHint, setShowHint] = React.useState(false);
+
+        const isLadder = type === 'LADDER';
+        const isSnake = type === 'SNAKE';
+
+        const handleSelectOption = (index) => {
+          if (isAnswered) return;
+          setSelectedIndex(index);
+          setIsAnswered(true);
+          const isCorrect = index === question.correctIndex;
+          if (isCorrect) {
+            soundManager.playCorrect();
+          } else {
+            soundManager.playWrong();
+          }
+        };
+
+        const handlePlayAudio = () => {
+          const textToSpeak = `${question.promptId}. Pilihan jawaban: ${question.options.join(', ')}`;
+          speakText(textToSpeak);
+        };
+
+        const handleContinue = () => {
+          if (selectedIndex === null) return;
+          const isCorrect = selectedIndex === question.correctIndex;
+          onResolved(isCorrect);
+        };
+
+        const isCorrect = selectedIndex === question.correctIndex;
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-200">
+              <div
+                className={`p-5 text-white flex items-center justify-between ${
+                  isLadder ? 'bg-gradient-to-r from-emerald-600 to-teal-700' : isSnake ? 'bg-gradient-to-r from-rose-500 to-orange-600' : 'bg-gradient-to-r from-blue-600 to-emerald-600'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{isLadder ? '🪜' : isSnake ? '🐍' : '⭐'}</span>
+                  <div>
+                    <h2 className="text-lg font-bold">
+                      {isLadder ? 'Tantangan Tangga Ekosistem' : isSnake ? 'Ular Mengintai! Jawab & Selamat' : 'Kuis Bonus Materi Ekosistem'}
+                    </h2>
+                    <p className="text-xs text-white/90">
+                      {isLadder ? `Jawab benar untuk naik dari petak #${fromTile} ke #${targetTile}!` : isSnake ? `Jawab benar agar selamat dan tidak terperosok ke petak #${targetTile}!` : `Jawab benar untuk raih poin ekstra di petak #${fromTile}!`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-white/20 rounded-full text-xs font-semibold backdrop-blur-sm">
+                  <span>{playerAvatar}</span>
+                  <span>{playerName}</span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="space-y-2">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="text-lg font-bold text-slate-800 leading-snug">
+                      {question.promptId}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={handlePlayAudio}
+                      title="Dengarkan soal"
+                      className="shrink-0 p-2.5 rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors cursor-pointer"
+                    >
+                      🔊
+                    </button>
+                  </div>
+                  {question.promptEn && (
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wide">
+                      Topik: {question.promptEn}
+                    </p>
+                  )}
+                </div>
+
+                {question.hint && !isAnswered && (
+                  <div>
+                    <button
+                      onClick={() => setShowHint(!showHint)}
+                      className="text-xs text-emerald-700 hover:text-emerald-800 font-semibold flex items-center gap-1 cursor-pointer"
+                    >
+                      💡 <span>{showHint ? 'Sembunyikan Petunjuk' : 'Lihat Petunjuk Kuis'}</span>
+                    </button>
+                    {showHint && (
+                      <div className="mt-2 p-2.5 bg-emerald-50 rounded-xl text-xs text-emerald-900 border border-emerald-200">
+                        {question.hint}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                  {question.options.map((option, idx) => {
+                    const isSelected = selectedIndex === idx;
+                    const isOptionCorrect = idx === question.correctIndex;
+                    let btnClasses = 'border-slate-200 bg-slate-50 hover:bg-emerald-50 hover:border-emerald-300 text-slate-700';
+                    if (isAnswered) {
+                      if (isOptionCorrect) {
+                        btnClasses = 'border-emerald-500 bg-emerald-50 text-emerald-900 font-bold ring-2 ring-emerald-400';
+                      } else if (isSelected) {
+                        btnClasses = 'border-rose-400 bg-rose-50 text-rose-900 line-through';
+                      } else {
+                        btnClasses = 'opacity-40 border-slate-200 bg-slate-50 text-slate-400';
+                      }
+                    }
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleSelectOption(idx)}
+                        disabled={isAnswered}
+                        className={`p-3.5 rounded-2xl border text-left font-medium text-sm transition-all flex items-center justify-between cursor-pointer ${btnClasses}`}
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-full bg-white shadow-xs flex items-center justify-center text-xs font-bold text-slate-600 border border-slate-200">
+                            {String.fromCharCode(65 + idx)}
+                          </span>
+                          <span>{option}</span>
+                        </span>
+                        {isAnswered && isOptionCorrect && <span className="text-emerald-600 font-bold">✓</span>}
+                        {isAnswered && isSelected && !isOptionCorrect && <span className="text-rose-500 font-bold">✕</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {isAnswered && (
+                  <div
+                    className={`p-4 rounded-2xl border text-sm space-y-2 animate-fade-in ${
+                      isCorrect ? 'bg-emerald-50/80 border-emerald-200 text-emerald-950' : 'bg-rose-50/80 border-rose-200 text-rose-950'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 font-bold text-base">
+                      {isCorrect ? (
+                        <>✨ <span>Hebat! Jawabanmu Benar! (+100 Poin)</span></>
+                      ) : (
+                        <>❌ <span>Oops, Jawaban Belum Tepat!</span></>
+                      )}
+                    </div>
+                    <p className="font-semibold text-xs text-slate-700">
+                      {isLadder && (isCorrect ? `🚀 Selamat! ${playerName} berhasil menaiki tangga ke petak #${targetTile}!` : `📍 ${playerName} tetap berada di petak #${fromTile}. Ayo coba lagi nanti!`)}
+                      {isSnake && (isCorrect ? `🛡️ Perisai aktif! ${playerName} berhasil menghindari gigitan ular dan tetap aman di petak #${fromTile}!` : `🐍 Sayang sekali, ${playerName} tergelincir turun ke petak #${targetTile}.`)}
+                      {!isLadder && !isSnake && (isCorrect ? `⭐ Luar biasa! Bonus 50 poin ditambahkan ke skor ${playerName}!` : `Semangat! Pelajari materi ekosistem kembali.`)}
+                    </p>
+                    <div className="pt-2 border-t border-slate-200/60 text-xs text-slate-600">
+                      <span className="font-bold">Penjelasan materi: </span>
+                      <span>{question.explanation}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+                {isAnswered ? (
+                  <button
+                    onClick={handleContinue}
+                    className="px-6 py-2.5 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-colors shadow-xs cursor-pointer"
+                  >
+                    Lanjutkan Permainan ➔
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-400 italic">Pilih salah satu jawaban di atas untuk melanjutkan</p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const DictionaryModal = ({ isOpen, onClose }) => {
+        const [searchQuery, setSearchQuery] = React.useState('');
+        const [selectedCategory, setSelectedCategory] = React.useState('All');
+
+        if (!isOpen) return null;
+
+        const categories = ['All', 'Komponen', 'Rantai Makanan', 'Hewan', 'Jenis Ekosistem', 'Istilah'];
+        const filteredItems = EKOSISTEM_VOCABULARY.filter((item) => {
+          const matchesSearch = item.english.toLowerCase().includes(searchQuery.toLowerCase()) || item.indonesian.toLowerCase().includes(searchQuery.toLowerCase()) || item.exampleId.toLowerCase().includes(searchQuery.toLowerCase());
+          const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+          return matchesSearch && matchesCategory;
+        });
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-200 flex flex-col max-h-[88vh]">
+              <div className="p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-green-600 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-white/20 rounded-xl backdrop-blur-sm text-xl">📖</div>
+                  <div>
+                    <h2 className="text-lg font-bold">Ringkasan Materi Ekosistem (IPAS Kelas 3 SD)</h2>
+                    <p className="text-xs text-white/90">Komponen biotik & abiotik, rantai makanan, serta interaksi makhluk hidup</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer text-lg">✕</button>
+              </div>
+
+              <div className="p-4 border-b border-slate-100 bg-slate-50 space-y-3 shrink-0">
+                <input
+                  type="text"
+                  placeholder="🔍 Cari istilah (misal: biotik, produsen, herbivora, sawah...)"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 bg-white rounded-xl text-sm border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                />
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-3 py-1.5 rounded-lg font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                        selectedCategory === cat ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-emerald-50'
+                      }`}
+                    >
+                      {cat === 'All' ? 'Semua Kategori' : cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-4 overflow-y-auto space-y-3 flex-1">
+                {filteredItems.length === 0 ? (
+                  <div className="py-12 text-center text-slate-400 text-sm">Tidak ada materi yang cocok dengan pencarian Anda.</div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {filteredItems.map((item) => (
+                      <div key={item.id} className="p-3.5 rounded-2xl bg-emerald-50/50 border border-emerald-200 hover:bg-emerald-50 transition-all flex flex-col justify-between gap-2">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-3xl p-1 bg-white rounded-xl shadow-xs border border-slate-100">{item.emoji}</span>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-bold text-slate-900 text-base">{item.english}</h3>
+                                {item.phonetic && <span className="text-[11px] text-emerald-700 font-medium bg-emerald-100 px-1.5 py-0.5 rounded">{item.phonetic}</span>}
+                              </div>
+                              <p className="text-xs text-emerald-800 font-semibold">{item.indonesian}</p>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => speakText(`${item.english}. ${item.exampleId}`)}
+                            title={`Dengarkan penjelasan ${item.english}`}
+                            className="p-2 rounded-lg bg-emerald-100 text-emerald-800 hover:bg-emerald-200 transition-colors shrink-0 cursor-pointer"
+                          >
+                            🔊
+                          </button>
+                        </div>
+                        <div className="text-[11px] text-slate-600 bg-white/80 p-2 rounded-xl border border-slate-100 space-y-0.5">
+                          <p className="font-semibold text-slate-800">Contoh: {item.exampleEn}</p>
+                          <p className="text-slate-600">{item.exampleId}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="p-3.5 bg-slate-50 border-t border-slate-100 text-center text-xs text-slate-500 shrink-0">
+                Tip: Klik tombol speaker 🔊 untuk mendengarkan penjelasan materi audio!
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const DiceRoller = ({ currentValue, isRolling, disabled, playerColor, playerName, onRoll }) => {
+        const handleRollClick = () => {
+          if (disabled || isRolling) return;
+          soundManager.playDiceRoll();
+          onRoll();
+        };
+
+        const renderDiceDots = (val) => {
+          const dotsMap = {
+            1: [4],
+            2: [0, 8],
+            3: [0, 4, 8],
+            4: [0, 2, 6, 8],
+            5: [0, 2, 4, 6, 8],
+            6: [0, 2, 3, 5, 6, 8],
+          };
+          const activeDots = dotsMap[val] || [4];
+          return (
+            <div className="grid grid-cols-3 grid-rows-3 w-14 h-14 p-2 gap-1 bg-white rounded-xl shadow-inner border border-slate-200">
+              {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(idx => (
+                <div key={idx} className="flex items-center justify-center">
+                  {activeDots.includes(idx) && (
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shadow-xs"
+                      style={{ backgroundColor: playerColor || '#10B981' }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        };
+
+        return (
+          <div className="flex flex-col items-center justify-center gap-3">
+            <div
+              className={`relative transition-all duration-300 p-1 bg-gradient-to-br from-white to-emerald-50 rounded-2xl shadow-lg border-2 ${
+                isRolling ? 'animate-bounce' : ''
+              }`}
+              style={{ borderColor: playerColor }}
+            >
+              {renderDiceDots(currentValue)}
+            </div>
+            <button
+              onClick={handleRollClick}
+              disabled={disabled || isRolling}
+              style={{ backgroundColor: disabled ? '#94A3B8' : playerColor }}
+              className={`px-6 py-3 rounded-xl font-bold text-white text-base shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer ${
+                disabled ? 'opacity-60 cursor-not-allowed shadow-none' : 'hover:brightness-105 hover:shadow-lg'
+              }`}
+            >
+              <span>🎲</span>
+              <span>{isRolling ? 'Mengocok Dadu...' : `Lempar Dadu (${playerName})`}</span>
+            </button>
+          </div>
+        );
+      };
+
+      const ScoreBoard = ({ players, activePlayerIndex, lastDiceRoll, message }) => {
+        return (
+          <div className="w-full max-w-xl mx-auto space-y-3">
+            <div className="p-3 bg-white/90 rounded-2xl shadow-xs border border-emerald-200/80 flex items-center justify-between gap-3 text-sm">
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="text-xl shrink-0">📢</span>
+                <p className="font-semibold text-slate-800 text-xs md:text-sm truncate">
+                  {message}
+                </p>
+              </div>
+              {lastDiceRoll !== null && (
+                <div className="shrink-0 flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 rounded-lg text-xs font-bold text-emerald-900">
+                  <span>Dadu:</span>
+                  <span className="text-emerald-700 text-sm">{lastDiceRoll}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {players.map((player, idx) => {
+                const isActive = idx === activePlayerIndex;
+                return (
+                  <div
+                    key={player.id}
+                    className={`p-3.5 rounded-2xl border transition-all ${
+                      isActive ? 'bg-white shadow-md border-2 scale-[1.02]' : 'bg-white/70 border-slate-200 opacity-80'
+                    }`}
+                    style={{ borderColor: isActive ? player.color : undefined }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl p-1 bg-slate-50 rounded-xl shadow-xs border border-slate-100">
+                          {player.avatar}
+                        </span>
+                        <div>
+                          <h3 className="font-bold text-xs md:text-sm text-slate-900 flex items-center gap-1">
+                            <span>{player.name}</span>
+                            {player.isAi && <span className="text-[10px] text-slate-500 font-normal">(AI)</span>}
+                          </h3>
+                          <span className="text-[11px] font-semibold text-slate-500 block">
+                            Petak #{player.position} / 100
+                          </span>
+                        </div>
+                      </div>
+                      {isActive && (
+                        <span
+                          className="px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase text-white shadow-xs animate-pulse"
+                          style={{ backgroundColor: player.color }}
+                        >
+                          Giliran
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden mb-2">
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{ width: `${player.position}%`, backgroundColor: player.color }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-600 font-medium pt-1 border-t border-slate-100">
+                      <div>
+                        Skor: <strong className="text-slate-800">{player.score}</strong>
+                      </div>
+                      <div>
+                        Kuis: <strong className="text-emerald-600">{player.correctAnswers}</strong>/
+                        <span className="text-slate-400">{player.correctAnswers + player.wrongAnswers}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      const AVAILABLE_AVATARS = ['🐻', '🦊', '🐱', '🦁', '🐼', '🐰', '🐸', '🤖'];
+
+      const PlayerSetupModal = ({ isOpen, players, onSave, onClose }) => {
+        const [p1Name, setP1Name] = React.useState(players[0]?.name || 'Pemain 1');
+        const [p1Avatar, setP1Avatar] = React.useState(players[0]?.avatar || '🐻');
+        const [p1Color, setP1Color] = React.useState(players[0]?.color || '#2563EB');
+        const [p2Name, setP2Name] = React.useState(players[1]?.name || 'Pemain 2');
+        const [p2Avatar, setP2Avatar] = React.useState(players[1]?.avatar || '🦊');
+        const [p2Color, setP2Color] = React.useState(players[1]?.color || '#E11D48');
+        const [isP2Ai, setIsP2Ai] = React.useState(players[1]?.isAi || false);
+
+        if (!isOpen) return null;
+
+        const handleSave = () => {
+          const updated = [
+            { ...players[0], name: p1Name.trim() || 'Pemain 1', avatar: p1Avatar, color: p1Color },
+            { ...players[1], name: isP2Ai ? 'Komputer Bot (AI)' : p2Name.trim() || 'Pemain 2', avatar: isP2Ai ? '🤖' : p2Avatar, color: p2Color, isAi: isP2Ai },
+          ];
+          onSave(updated);
+          onClose();
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-200 flex flex-col max-h-[90vh]">
+              <div className="p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">👥</span>
+                  <div>
+                    <h2 className="text-lg font-bold">Pengaturan Pemain Duel 1vs1</h2>
+                    <p className="text-xs text-white/90">Ubah nama, avatar, warna pion, atau lawan bot komputer</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer text-lg">✕</button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-6 flex-1">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Mode Lawan Duel</label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsP2Ai(false)}
+                      className={`p-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
+                        !isP2Ai ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 shadow-xs' : 'border-slate-200 bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      👥 <span>Duel 2 Orang (1vs1)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsP2Ai(true)}
+                      className={`p-3 rounded-2xl border-2 flex items-center justify-center gap-2 font-bold text-sm transition-all cursor-pointer ${
+                        isP2Ai ? 'border-emerald-600 bg-emerald-50/50 text-emerald-900 shadow-xs' : 'border-slate-200 bg-slate-50 text-slate-600'
+                      }`}
+                    >
+                      🤖 <span>Lawan Bot Komputer</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-blue-50/60 border border-blue-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-blue-900 uppercase">Pemain 1 (P1)</span>
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: p1Color }} />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Nama Pemain 1:</label>
+                    <input
+                      type="text"
+                      maxLength={18}
+                      value={p1Name}
+                      onChange={(e) => setP1Name(e.target.value)}
+                      className="w-full px-3 py-2 bg-white rounded-xl text-sm border border-slate-200 font-semibold"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-slate-600 block mb-1">Pilih Maskot / Avatar:</label>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {AVAILABLE_AVATARS.map((av) => (
+                        <button
+                          key={av}
+                          type="button"
+                          onClick={() => setP1Avatar(av)}
+                          className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-transform cursor-pointer ${
+                            p1Avatar === av ? 'bg-blue-600 text-white scale-110 shadow-md ring-2 ring-blue-300' : 'bg-white text-slate-700 border border-slate-200'
+                          }`}
+                        >
+                          {av}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/80 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-rose-900 uppercase">{isP2Ai ? 'Pemain 2 (Bot AI)' : 'Pemain 2 (P2)'}</span>
+                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: p2Color }} />
+                  </div>
+                  {!isP2Ai ? (
+                    <>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">Nama Pemain 2:</label>
+                        <input
+                          type="text"
+                          maxLength={18}
+                          value={p2Name}
+                          onChange={(e) => setP2Name(e.target.value)}
+                          className="w-full px-3 py-2 bg-white rounded-xl text-sm border border-slate-200 font-semibold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-slate-600 block mb-1">Pilih Maskot / Avatar:</label>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {AVAILABLE_AVATARS.map((av) => (
+                            <button
+                              key={av}
+                              type="button"
+                              onClick={() => setP2Avatar(av)}
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg transition-transform cursor-pointer ${
+                                p2Avatar === av ? 'bg-rose-600 text-white scale-110 shadow-md ring-2 ring-rose-300' : 'bg-white text-slate-700 border border-slate-200'
+                              }`}
+                            >
+                              {av}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="p-3 bg-white/80 rounded-xl text-xs text-slate-600 flex items-center gap-2.5">
+                      <span className="text-2xl">🤖</span>
+                      <p>Komputer Bot akan otomatis melempar dadu dan menjawab pertanyaan kuis saat giliran!</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
+                <button onClick={onClose} className="px-4 py-2 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-200 cursor-pointer">Batal</button>
+                <button onClick={handleSave} className="px-6 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs cursor-pointer">Simpan Perubahan</button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const RulesModal = ({ isOpen, onClose }) => {
+        if (!isOpen) return null;
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+            <div className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-200 flex flex-col max-h-[88vh]">
+              <div className="p-5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">❓</span>
+                  <div>
+                    <h2 className="text-lg font-bold">Aturan Permainan Ular Tangga</h2>
+                    <p className="text-xs text-white/90">Panduan bermain edukasi IPAS Materi Ekosistem Kelas 3 SD</p>
+                  </div>
+                </div>
+                <button onClick={onClose} className="p-2 rounded-full hover:bg-white/20 transition-colors cursor-pointer text-lg">✕</button>
+              </div>
+
+              <div className="p-6 overflow-y-auto space-y-4 flex-1 text-sm text-slate-700 leading-relaxed">
+                <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">🪜</span>
+                  <div>
+                    <h3 className="font-bold text-emerald-950 text-sm">Tantangan Tangga (Ladders)</h3>
+                    <p className="text-xs text-emerald-900 mt-0.5">
+                      Saat pion mendarat di bawah tangga, kamu akan mendapatkan pertanyaan kuis ekosistem. Jika <strong>menjawab benar</strong>, pionmu akan <strong>naik ke puncak tangga</strong> dan mendapat +100 poin! Jika salah, kamu tetap berada di bawah tangga.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">🐍</span>
+                  <div>
+                    <h3 className="font-bold text-rose-950 text-sm">Tantangan Ular (Snakes)</h3>
+                    <p className="text-xs text-rose-900 mt-0.5">
+                      Saat pion mendarat di kepala ular, kamu harus menjawab pertanyaan kuis. Jika <strong>menjawab benar</strong>, kamu <strong>lolos dan perisaimu aktif</strong> (tidak turun)! Jika salah, pionmu akan <strong>tergelincir turun ke ekor ular</strong>.
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-purple-50 border border-purple-200 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">⭐</span>
+                  <div>
+                    <h3 className="font-bold text-purple-950 text-sm">Petak Materi Spesial</h3>
+                    <p className="text-xs text-purple-900 mt-0.5">
+                      Petak bergambar komponen ekosistem memberikan kuis bonus. Jawab benar untuk menambah skor +50 poin!
+                    </p>
+                  </div>
+                </div>
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 flex items-start gap-3">
+                  <span className="text-2xl shrink-0">🏆</span>
+                  <div>
+                    <h3 className="font-bold text-amber-950 text-sm">Pemenang Pertandingan</h3>
+                    <p className="text-xs text-amber-900 mt-0.5">
+                      Pemain pertama yang berhasil mencapai <strong>Petak #100</strong> memenangkan permainan! Jika lemparan dadu melebihi 100, pion akan memantul mundur sesuai sisa angka dadu.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end shrink-0">
+                <button onClick={onClose} className="px-6 py-2 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-xs cursor-pointer">
+                  Saya Mengerti, Mulai Main!
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      };
+
+      const GameOverModal = ({ winner, players, onRestart }) => {
+        React.useEffect(() => {
+          soundManager.playVictory();
+          if (typeof confetti === 'function') {
+            const end = Date.now() + 2.5 * 1000;
+            const colors = ['#10B981', '#059669', '#3B82F6', '#EC4899', '#8B5CF6'];
+            (function frame() {
+              confetti({ particleCount: 4, angle: 60, spread: 55, origin: { x: 0 }, colors });
+              confetti({ particleCount: 4, angle: 120, spread: 55, origin: { x: 1 }, colors });
+              if (Date.now() < end) {
+                requestAnimationFrame(frame);
+              }
+            })();
+          }
+        }, []);
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fade-in">
+            <div className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-emerald-300 text-center p-6 space-y-6">
+              <div className="relative mx-auto w-24 h-24 rounded-full bg-gradient-to-tr from-emerald-400 to-teal-300 flex items-center justify-center shadow-lg border-4 border-white text-5xl">
+                🏆
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest">Hore! Permainan Selesai</p>
+                <h2 className="text-2xl font-black text-slate-900">{winner.name} Menang! 🎉</h2>
+                <p className="text-xs text-slate-500">Berhasil mencapai Petak #100 dan menguasai materi Ekosistem IPAS!</p>
+              </div>
+
+              <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left">
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Ringkasan Skor Duel</p>
+                {players.map((p) => {
+                  const isWinner = p.id === winner.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`p-3 rounded-xl border flex items-center justify-between ${
+                        isWinner ? 'bg-emerald-50/80 border-emerald-300 ring-1 ring-emerald-300' : 'bg-white border-slate-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-2xl">{p.avatar}</span>
+                        <div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-sm text-slate-800">{p.name}</span>
+                            {isWinner && <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-600 text-white font-bold">JUARA</span>}
+                          </div>
+                          <span className="text-xs text-slate-500">Petak #{p.position} • Benar: {p.correctAnswers} kuis</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-black text-base text-emerald-600">{p.score}</span>
+                        <span className="text-[10px] text-slate-400 block">poin</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={onRestart}
+                className="w-full py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-extrabold text-base shadow-lg hover:from-emerald-700 hover:to-teal-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                🔄 <span>Main Lagi (Rematch)</span>
+              </button>
+            </div>
+          </div>
+        );
+      };
+
+      const Header = ({ onOpenDictionary, onOpenRules, onOpenPlayerSetup }) => {
+        const [isMuted, setIsMuted] = React.useState(soundManager.getMuted());
+        const [isFullscreen, setIsFullscreen] = React.useState(false);
+
+        React.useEffect(() => {
+          const handleFullscreenChange = () => {
+            setIsFullscreen(!!document.fullscreenElement);
+          };
+          document.addEventListener('fullscreenchange', handleFullscreenChange);
+          return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+        }, []);
+
+        const handleToggleSound = () => {
+          const muted = soundManager.toggleMute();
+          setIsMuted(muted);
+        };
+
+        const handleToggleFullscreen = () => {
+          if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch((err) => console.warn(err));
+          } else {
+            if (document.exitFullscreen) {
+              document.exitFullscreen().catch((err) => console.warn(err));
+            }
+          }
+        };
+
+        return (
+          <header className="w-full bg-white/90 backdrop-blur-md border-b border-emerald-200 sticky top-0 z-40 px-4 md:px-8 py-3">
+            <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2.5 shrink-0">
+                <span className="text-2xl">🌱</span>
+                <h1 className="text-base md:text-xl font-extrabold tracking-tight text-emerald-950 whitespace-nowrap">
+                  Ular Tangga IPAS: Ekosistem (Kelas 3 SD)
+                </h1>
+              </div>
+
+              <nav className="flex items-center gap-1.5 md:gap-3 shrink-0">
+                <button
+                  onClick={onOpenDictionary}
+                  className="px-2.5 py-1.5 rounded-lg text-xs md:text-sm font-semibold text-slate-700 hover:text-emerald-800 hover:bg-emerald-100/60 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  📖 <span className="hidden sm:inline">Materi Ekosistem</span>
+                </button>
+                <button
+                  onClick={onOpenRules}
+                  className="px-2.5 py-1.5 rounded-lg text-xs md:text-sm font-semibold text-slate-700 hover:text-teal-800 hover:bg-teal-100/60 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  ❓ <span className="hidden sm:inline">Aturan Main</span>
+                </button>
+                <button
+                  onClick={onOpenPlayerSetup}
+                  className="px-2.5 py-1.5 rounded-lg text-xs md:text-sm font-semibold text-slate-700 hover:text-indigo-800 hover:bg-indigo-100/60 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  👥 <span className="hidden sm:inline">Ubah Pemain</span>
+                </button>
+                <button
+                  onClick={handleToggleSound}
+                  title={isMuted ? 'Nyalakan Suara' : 'Matikan Suara'}
+                  className="p-2 rounded-lg text-slate-600 hover:bg-emerald-100/60 transition-colors cursor-pointer text-sm"
+                >
+                  {isMuted ? '🔇' : '🔊'}
+                </button>
+                <button
+                  onClick={handleToggleFullscreen}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition-colors cursor-pointer hidden md:block"
+                >
+                  {isFullscreen ? 'Exit Fullscreen' : 'Layar Penuh'}
+                </button>
+              </nav>
+            </div>
+          </header>
+        );
+      };
+
+      const INITIAL_PLAYERS = [
+        { id: 1, name: 'Budi (P1)', avatar: '🐻', color: '#2563EB', position: 1, score: 0, streak: 0, correctAnswers: 0, wrongAnswers: 0, isAi: false },
+        { id: 2, name: 'Siti (P2)', avatar: '🦊', color: '#E11D48', position: 1, score: 0, streak: 0, correctAnswers: 0, wrongAnswers: 0, isAi: false },
+      ];
+
+      function App() {
+        const [players, setPlayers] = React.useState(INITIAL_PLAYERS);
+        const [activePlayerIndex, setActivePlayerIndex] = React.useState(0);
+        const [diceValue, setDiceValue] = React.useState(1);
+        const [isRollingDice, setIsRollingDice] = React.useState(false);
+        const [gamePhase, setGamePhase] = React.useState('WAITING_ROLL');
+        const [pendingQuiz, setPendingQuiz] = React.useState(null);
+        const [winner, setWinner] = React.useState(null);
+        const [statusMessage, setStatusMessage] = React.useState('Selamat datang! Giliran Budi (P1) - Tekan Lempar Dadu untuk mulai.');
+
+        const [isDictionaryOpen, setIsDictionaryOpen] = React.useState(false);
+        const [isRulesOpen, setIsRulesOpen] = React.useState(false);
+        const [isPlayerSetupOpen, setIsPlayerSetupOpen] = React.useState(false);
+
+        const usedQuestionIdsRef = React.useRef(new Set());
+        const activePlayer = players[activePlayerIndex];
+
+        const advanceTurn = React.useCallback((bonusRoll = false) => {
+          if (bonusRoll) {
+            setStatusMessage(`Dadu 6! ${players[activePlayerIndex].name} mendapat kesempatan melempar lagi!`);
+            setGamePhase('WAITING_ROLL');
+            return;
+          }
+          const nextIndex = (activePlayerIndex + 1) % players.length;
+          setActivePlayerIndex(nextIndex);
+          setGamePhase('WAITING_ROLL');
+          setStatusMessage(`Giliran ${players[nextIndex].name} - Silakan lempar dadu!`);
+        }, [activePlayerIndex, players]);
+
+        const executeStepMovement = React.useCallback((targetTile, rolledValue) => {
+          setGamePhase('MOVING_TOKEN');
+          let currentPos = players[activePlayerIndex].position;
+          const stepDirection = targetTile > currentPos ? 1 : -1;
+
+          const stepInterval = setInterval(() => {
+            if (currentPos !== targetTile) {
+              currentPos += stepDirection;
+              soundManager.playStep();
+              setPlayers(prev => prev.map((p, idx) => idx === activePlayerIndex ? { ...p, position: currentPos } : p));
+            } else {
+              clearInterval(stepInterval);
+
+              if (currentPos === 100) {
+                setWinner(players[activePlayerIndex]);
+                setGamePhase('GAME_OVER');
+                setStatusMessage(`🏆 Hore! ${players[activePlayerIndex].name} mencapai petak 100 dan menang!`);
+                return;
+              }
+
+              const ladder = LADDERS.find(l => l.from === currentPos);
+              if (ladder) {
+                const question = getRandomQuizQuestion(usedQuestionIdsRef.current);
+                usedQuestionIdsRef.current.add(question.id);
+                setPendingQuiz({ type: 'LADDER', fromTile: currentPos, targetTile: ladder.to, question });
+                setGamePhase('QUIZ_LADDER');
+                setStatusMessage(`Tantangan Tangga di petak #${currentPos}! Jawab kuis untuk naik ke #${ladder.to}!`);
+                return;
+              }
+
+              const snake = SNAKES.find(s => s.from === currentPos);
+              if (snake) {
+                const question = getRandomQuizQuestion(usedQuestionIdsRef.current);
+                usedQuestionIdsRef.current.add(question.id);
+                setPendingQuiz({ type: 'SNAKE', fromTile: currentPos, targetTile: snake.to, question });
+                setGamePhase('QUIZ_SNAKE');
+                setStatusMessage(`Waspada Ular di petak #${currentPos}! Jawab kuis untuk lolos dan tetap aman!`);
+                return;
+              }
+
+              if (BONUS_TILES_MAP[currentPos]) {
+                const question = getRandomQuizQuestion(usedQuestionIdsRef.current);
+                usedQuestionIdsRef.current.add(question.id);
+                setPendingQuiz({ type: 'BONUS', fromTile: currentPos, question });
+                setGamePhase('QUIZ_BONUS');
+                setStatusMessage(`Petak Kosakata Pakaian di #${currentPos}! Jawab kuis untuk bonus poin!`);
+                return;
+              }
+
+              advanceTurn(rolledValue === 6);
+            }
+          }, 200);
+        }, [activePlayerIndex, advanceTurn, players]);
+
+        const handleRollDice = React.useCallback(() => {
+          if (gamePhase !== 'WAITING_ROLL' || isRollingDice) return;
+          setIsRollingDice(true);
+          setGamePhase('ROLLING_DICE');
+          setStatusMessage(`${activePlayer.name} sedang melempar dadu...`);
+
+          let rolls = 0;
+          const rollInterval = setInterval(() => {
+            const tempVal = Math.floor(Math.random() * 6) + 1;
+            setDiceValue(tempVal);
+            rolls++;
+            if (rolls >= 8) {
+              clearInterval(rollInterval);
+              const finalValue = Math.floor(Math.random() * 6) + 1;
+              setDiceValue(finalValue);
+              setIsRollingDice(false);
+
+              const currentPos = activePlayer.position;
+              const proposedPos = currentPos + finalValue;
+              let dest = proposedPos;
+              if (proposedPos > 100) {
+                dest = 100 - (proposedPos - 100);
+                setStatusMessage(`Dadu ${finalValue}! Melebihi 100, memantul ke petak #${dest}.`);
+              } else {
+                setStatusMessage(`Dadu ${finalValue}! Bergerak dari #${currentPos} ke #${dest}.`);
+              }
+              executeStepMovement(dest, finalValue);
+            }
+          }, 70);
+        }, [activePlayer, executeStepMovement, gamePhase, isRollingDice]);
+
+        // AI Bot logic handler
+        React.useEffect(() => {
+          if (activePlayer.isAi && gamePhase === 'WAITING_ROLL' && !winner && !pendingQuiz) {
+            const timer = setTimeout(() => {
+              handleRollDice();
+            }, 1000);
+            return () => clearTimeout(timer);
+          }
+        }, [activePlayer.isAi, gamePhase, handleRollDice, pendingQuiz, winner]);
+
+        const handleResolveQuiz = (isCorrect) => {
+          if (!pendingQuiz) return;
+          const { type, targetTile } = pendingQuiz;
+          const bonusRoll = diceValue === 6;
+
+          setPlayers(prev => prev.map((p, idx) => {
+            if (idx !== activePlayerIndex) return p;
+            let newPos = p.position;
+            let newScore = p.score;
+            let newStreak = isCorrect ? p.streak + 1 : 0;
+            let newCorrect = p.correctAnswers + (isCorrect ? 1 : 0);
+            let newWrong = p.wrongAnswers + (!isCorrect ? 1 : 0);
+
+            if (type === 'LADDER' && isCorrect && targetTile) {
+              newPos = targetTile;
+              newScore += 100 + newStreak * 10;
+            } else if (type === 'SNAKE') {
+              if (isCorrect) {
+                newScore += 100 + newStreak * 10;
+              } else if (targetTile) {
+                newPos = targetTile;
+              }
+            } else if (type === 'BONUS' && isCorrect) {
+              newScore += 50;
+            }
+
+            return {
+              ...p,
+              position: newPos,
+              score: newScore,
+              streak: newStreak,
+              correctAnswers: newCorrect,
+              wrongAnswers: newWrong,
+            };
+          }));
+
+          if (type === 'LADDER' && isCorrect) {
+            soundManager.playLadderClimb();
+          } else if (type === 'SNAKE' && !isCorrect) {
+            soundManager.playSnakeSlide();
+          }
+
+          setPendingQuiz(null);
+
+          if (type === 'LADDER' && isCorrect && targetTile === 100) {
+            setWinner(players[activePlayerIndex]);
+            setGamePhase('GAME_OVER');
+            return;
+          }
+
+          advanceTurn(bonusRoll);
+        };
+
+        const handleRestartGame = () => {
+          setPlayers(prev => prev.map(p => ({ ...p, position: 1, score: 0, streak: 0, correctAnswers: 0, wrongAnswers: 0 })));
+          setActivePlayerIndex(0);
+          setDiceValue(1);
+          setPendingQuiz(null);
+          setWinner(null);
+          setGamePhase('WAITING_ROLL');
+          setStatusMessage('Permainan baru dimulai! Giliran Pemain 1 - Lempar Dadu!');
+        };
+
+        return (
+          <div className="min-h-screen bg-gradient-to-b from-amber-50/60 via-orange-50/30 to-amber-100/50 flex flex-col">
+            <Header
+              onOpenDictionary={() => setIsDictionaryOpen(true)}
+              onOpenRules={() => setIsRulesOpen(true)}
+              onOpenPlayerSetup={() => setIsPlayerSetupOpen(true)}
+            />
+
+            <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-4 md:py-6 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-6">
+              <section className="w-full lg:w-7/12 flex flex-col items-center">
+                <GameBoardCanvas
+                  players={players}
+                  activePlayerIndex={activePlayerIndex}
+                  highlightTile={pendingQuiz?.fromTile}
+                />
+                <div className="mt-3 text-center text-xs text-slate-500">
+                  Papan 10x10 Standard (1–100) • Sentuh petak untuk melihat rincian tangga atau ular
+                </div>
+              </section>
+
+              <section className="w-full lg:w-5/12 flex flex-col items-center gap-5">
+                <ScoreBoard
+                  players={players}
+                  activePlayerIndex={activePlayerIndex}
+                  lastDiceRoll={diceValue}
+                  message={statusMessage}
+                />
+
+                <div className="w-full max-w-xl bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-md border border-amber-200/90 flex flex-col items-center justify-center gap-4">
+                  <div className="text-center">
+                    <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block mb-1">Area Lempar Dadu</span>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {activePlayer.isAi ? 'Komputer Bot sedang bermain...' : `Giliran: ${activePlayer.name}`}
+                    </p>
+                  </div>
+
+                  <DiceRoller
+                    currentValue={diceValue}
+                    isRolling={isRollingDice}
+                    disabled={gamePhase !== 'WAITING_ROLL' || activePlayer.isAi}
+                    playerColor={activePlayer.color}
+                    playerName={activePlayer.name}
+                    onRoll={handleRollDice}
+                  />
+
+                  <div className="w-full mt-2 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="flex items-center gap-1.5">
+                      🌱 <span>Mapel: <strong>IPAS SD Kelas 3 (Materi Ekosistem)</strong></span>
+                    </span>
+                    <button
+                      onClick={() => setIsDictionaryOpen(true)}
+                      className="text-emerald-700 hover:text-emerald-800 font-semibold cursor-pointer underline"
+                    >
+                      Buka Ringkasan Materi
+                    </button>
+                  </div>
+                </div>
+              </section>
+            </main>
+
+            {pendingQuiz && (
+              <QuizModal
+                quizEvent={pendingQuiz}
+                playerName={activePlayer.name}
+                playerAvatar={activePlayer.avatar}
+                playerColor={activePlayer.color}
+                onResolved={handleResolveQuiz}
+              />
+            )}
+
+            <DictionaryModal isOpen={isDictionaryOpen} onClose={() => setIsDictionaryOpen(false)} />
+            <RulesModal isOpen={isRulesOpen} onClose={() => setIsRulesOpen(false)} />
+            <PlayerSetupModal isOpen={isPlayerSetupOpen} players={players} onSave={(updated) => setPlayers(updated)} onClose={() => setIsPlayerSetupOpen(false)} />
+            {winner && <GameOverModal winner={winner} players={players} onRestart={handleRestartGame} />}
+          </div>
+        );
+      }
+
+      const rootElement = document.getElementById('root');
+      const root = ReactDOM.createRoot(rootElement);
+      root.render(<App />);
+    </script>
+  </body>
+</html>
